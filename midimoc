@@ -1,0 +1,84 @@
+#! /bin/bash
+#
+#
+#
+
+### GLOBAL VARIABLES
+TRACKBACK="3a"; TRACKFWD="3b"
+CYCLE="2e"; SET="3c"; MARKERBACK="3d"; MARKERFWD="3e"
+REW="2b"; FWD="2c"; STOP="2a"; PLAY="29"; REC="2d"
+B1="10"; F1="00"; S1="20"; M1="30"; R1="40"
+B2="11"; F2="01"; S2="21"; M2="31"; R2="41"
+B3="12"; F3="02"; S3="22"; M3="32"; R3="42"
+B4="13"; F4="03"; S4="23"; M4="33"; R4="43"
+B5="14"; F5="04"; S5="24"; M5="34"; R5="44"
+B6="15"; F6="05"; S6="25"; M6="35"; R6="45"
+B7="16"; F7="06"; S7="26"; M7="36"; R7="46"
+B8="17"; F8="07"; S8="27"; M8="37"; R8="47"
+
+
+### MAIN PROGRAM
+_secondold="x"
+_second="y"
+_thirdold="x"
+_third="y"
+
+_device=$(amidi -l | grep nanoKONTROL2 | cut -c4-12)
+echo $_device
+
+if [ -e "mididump.tmp" ]; then
+ rm mididump.tmp
+fi
+
+amidi -p $_device -r mididump.tmp & # start mididump in background
+
+
+while :
+do
+
+ read -sn1 -t0.05 _key # read keyboard
+
+ _last3=$(tail -c3 mididump.tmp | od -A n -t x1) # read midi
+
+ _first=$(echo $_last3 | cut -c1-2)
+ _second=$(echo $_last3 | cut -c4-5)
+ _third=$(echo $_last3 | cut -c7-8)
+
+ if [ "$_second" != "$_secondold" ]; then
+#  echo $_key
+#  echo $_last3
+#  echo $_last3old
+#  echo $_first
+#  echo $_second
+#  echo $_third
+  if [ "$_second" == "$REC" ];  then mocp -p; fi # play
+  if [ "$_second" == "$STOP" ]; then mocp -P; fi # pause
+  if [ "$_second" == "$PLAY" ]; then mocp -U; fi # unpause
+  if [ "$_second" == "$REW" ];  then mocp -r; fi # previous
+  if [ "$_second" == "$FWD" ];  then mocp -f; fi # next
+
+  _secondold=$_second
+ fi
+
+ if [ "$_third" != "$_thirdold" ]; then
+#  echo $_second
+#  echo $_third
+  if [ "$_second" == "$B1" ];  then
+   echo $(($(($((16#$_third))*100))/127))
+   mocp -v $(($(($((16#$_third))*100))/127))
+  fi
+  _thirdold=$_third
+ fi
+
+
+ if [ "$_second" == "$CYCLE" ] || [ "$_key" == "q" ]; then break; fi # quit
+
+#fi
+done
+
+
+pkill amidi # stop mididump
+
+if [ -e "mididump.tmp" ]; then
+ rm mididump.tmp
+fi
