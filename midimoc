@@ -1,6 +1,13 @@
-#! /bin/bash
+#!/bin/bash
 #
-# Shell (bash) script to operate music player (moc) with midi controller (Korg nanokontrol2)
+# Shell script (bash) to operate music player (moc) with midi controller (Korg nanokontrol2)
+#
+# Open moc (mocp), connect nanokontrol2 and start midimoc.
+# Use the REW-, FWD, STOP-, PLAY- or REC-key to choose
+# previous, next, pause, unpause or play.
+# Use the first knob to set volume.
+# Toggle shuffle, autonext or repeat with first Solo/Mute/Record-Button.
+# Quit midimoc with the CYCLE-key or 'q' (on keyboard).
 #
 
 ### GLOBAL VARIABLES
@@ -32,12 +39,10 @@ fi
 
 amidi -p $_device -r mididump.tmp & # start mididump in background
 
-
 while :
 do
 
  read -sn1 -t0.05 _key # read keyboard
-
  _last3=$(tail -c3 mididump.tmp | od -A n -t x1) # read last 3 dumped midi codes
 
  _first=$(echo $_last3 | cut -c1-2)
@@ -45,27 +50,20 @@ do
  _third=$(echo $_last3 | cut -c7-8)
 
  if [ "$_second" != "$_secondold" ]; then # if second midi byte has changed
-#  echo $_key
-#  echo $_last3
-#  echo $_last3old
-#  echo $_first
-#  echo $_second
-#  echo $_third
   if [ "$_second" == "$REC" ];  then mocp -p; fi # play
   if [ "$_second" == "$STOP" ]; then mocp -P; fi # pause
   if [ "$_second" == "$PLAY" ]; then mocp -U; fi # unpause
   if [ "$_second" == "$REW" ];  then mocp -r; fi # previous
   if [ "$_second" == "$FWD" ];  then mocp -f; fi # next
-
+  if [ "$_second" == "$S1" ];   then mocp -t shuffle; fi  # toggle shuffle
+  if [ "$_second" == "$M1" ];   then mocp -t autonext; fi # toggle autonext
+  if [ "$_second" == "$R1" ];   then mocp -t repeat; fi   # toggle repeat
   _secondold=$_second
  fi
 
  if [ "$_third" != "$_thirdold" ]; then # if third midi byte has changed
-#  echo $_second
-#  echo $_third
   if [ "$_second" == "$B1" ];  then
-   echo $(($(($((16#$_third))*100))/127))
-   mocp -v $(($(($((16#$_third))*100))/127)) # set volume
+   mocp -v $(($(($((16#$_third))*100))/127)) # set volume in %
   fi
   _thirdold=$_third
  fi
